@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>🍌 Cat Classifier</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+
+            margin: 0;
+
+            padding: 20px;
+
+            min-height: 100vh;
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #fff9d6,
+                    #ffe66d
+                );
+        }
+
+
+        /* =========================
+           MAIN CARD
+           ========================= */
+
+        .container {
+
+            width: 100%;
+
+            max-width: 520px;
+
+            background: white;
+
+            padding: 35px;
+
+            border-radius: 22px;
+
+            text-align: center;
+
+            box-shadow:
+                0 15px 40px
+                rgba(0, 0, 0, 0.15);
+        }
+
+
+        /* =========================
+           TITLE
+           ========================= */
+
+        h1 {
+
+            margin: 0 0 10px 0;
+
+            font-size: 32px;
+
+            color: #333;
+        }
+
+
+        .subtitle {
+
+            margin: 0 0 30px 0;
+
+            color: #777;
+
+            font-size: 15px;
+
+            line-height: 1.5;
+        }
+
+
+        /* =========================
+           FILE INPUT
+           ========================= */
+
+        #imageInput {
+
+            display: none;
+        }
+
+
+        .browse-button {
+
+            display: inline-block;
+
+            padding: 14px 25px;
+
+            background: #f4c400;
+
+            color: #222;
+
+            border-radius: 10px;
+
+            cursor: pointer;
+
+            font-weight: bold;
+
+            font-size: 16px;
+
+            transition: 0.2s;
+        }
+
+
+        .browse-button:hover {
+
+            background: #dfb300;
+
+            transform:
+                translateY(-2px);
+        }
+
+
+        /* =========================
+           IMAGE PREVIEW
+           ========================= */
+
+        #preview {
+
+            display: none;
+
+            width: 300px;
+
+            height: 300px;
+
+            max-width: 100%;
+
+            object-fit: contain;
+
+            margin: 25px auto;
+
+            border-radius: 15px;
+
+            border: 2px solid #ddd;
+
+            background: #fafafa;
+        }
+
+
+        /* =========================
+           PREDICT BUTTON
+           ========================= */
+
+        #predictButton {
+
+            display: none;
+
+            width: 100%;
+
+            padding: 15px;
+
+            margin-top: 5px;
+
+            border: none;
+
+            border-radius: 10px;
+
+            background: #333;
+
+            color: white;
+
+            font-size: 17px;
+
+            font-weight: bold;
+
+            cursor: pointer;
+
+            transition: 0.2s;
+        }
+
+
+        #predictButton:hover {
+
+            background: #555;
+
+            transform:
+                translateY(-1px);
+        }
+
+
+        #predictButton:disabled {
+
+            background: #999;
+
+            cursor: not-allowed;
+
+            transform: none;
+        }
+
+
+        /* =========================
+           LOADING
+           ========================= */
+
+        #loading {
+
+            display: none;
+
+            margin-top: 20px;
+
+            color: #777;
+
+            font-weight: bold;
+
+            font-size: 15px;
+        }
+
+
+        /* =========================
+           RESULT
+           ========================= */
+
+        #result {
+
+            display: none;
+
+            margin-top: 25px;
+
+            padding: 25px;
+
+            border-radius: 15px;
+
+            background: #f4fff0;
+
+            border: 2px solid #b8e6a3;
+        }
+
+
+        .prediction {
+
+            font-size: 27px;
+
+            font-weight: bold;
+
+            color: #333;
+
+            text-transform: capitalize;
+        }
+
+
+        .confidence {
+
+            margin-top: 12px;
+
+            font-size: 19px;
+
+            color: #555;
+        }
+
+
+        /* =========================
+           ERROR
+           ========================= */
+
+        #errorBox {
+
+            display: none;
+
+            margin-top: 20px;
+
+            padding: 15px;
+
+            border-radius: 10px;
+
+            background: #ffe5e5;
+
+            border: 1px solid #ffaaaa;
+
+            color: #b00020;
+
+            text-align: left;
+
+            white-space: pre-wrap;
+
+            word-break: break-word;
+
+            font-size: 14px;
+
+            line-height: 1.5;
+        }
+
+
+        /* =========================
+           FOOTER
+           ========================= */
+
+        .footer {
+
+            margin-top: 25px;
+
+            color: #999;
+
+            font-size: 13px;
+        }
+
+
+        /* =========================
+           MOBILE
+           ========================= */
+
+        @media (max-width: 600px) {
+
+            .container {
+
+                padding: 25px;
+
+            }
+
+
+            h1 {
+
+                font-size: 27px;
+
+            }
+
+
+            #preview {
+
+                width: 250px;
+
+                height: 250px;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- =================================
+         MAIN CONTAINER
+         ================================= -->
+
+    <div class="container">
+
+
+        <!-- TITLE -->
+
+        <h1>
+            🍌 Cat Classifier
+        </h1>
+
+
+        <p class="subtitle">
+
+            Upload an image and let the
+            machine-learning model predict
+            whether it is a cat.
+
+        </p>
+
+
+
+        <!-- =================================
+             IMAGE INPUT
+             ================================= -->
+
+        <label
+            for="imageInput"
+            class="browse-button">
+
+            📁 Browse Image
+
+        </label>
+
+
+        <input
+            type="file"
+            id="imageInput"
+            accept="image/*">
+
+
+
+        <!-- =================================
+             IMAGE PREVIEW
+             ================================= -->
+
+        <img
+            id="preview"
+            alt="Selected image">
+
+
+
+        <!-- =================================
+             PREDICT BUTTON
+             ================================= -->
+
+        <button
+            id="predictButton">
+
+            🔍 Predict
+
+        </button>
+
+
+
+        <!-- =================================
+             LOADING
+             ================================= -->
+
+        <div id="loading">
+
+            ⏳ Analyzing image...
+
+        </div>
+
+
+
+        <!-- =================================
+             RESULT
+             ================================= -->
+
+        <div id="result">
+
+
+            <div
+                id="prediction"
+                class="prediction">
+
+            </div>
+
+
+            <div
+                id="confidence"
+                class="confidence">
+
+            </div>
+
+
+        </div>
+
+
+
+        <!-- =================================
+             ERROR
+             ================================= -->
+
+        <div
+            id="errorBox">
+
+        </div>
+
+
+
+        <!-- =================================
+             FOOTER
+             ================================= -->
+
+        <div class="footer">
+
+            Powered by TensorFlow + Flask
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- =====================================
+         JAVASCRIPT
+         ===================================== -->
+
+    <script>
+
+
+        // =================================
+        // Get HTML elements
+        // =================================
+
+        const imageInput =
+            document.getElementById(
+                "imageInput"
+            );
+
+
+        const preview =
+            document.getElementById(
+                "preview"
+            );
+
+
+        const predictButton =
+            document.getElementById(
+                "predictButton"
+            );
+
+
+        const loading =
+            document.getElementById(
+                "loading"
+            );
+
+
+        const result =
+            document.getElementById(
+                "result"
+            );
+
+
+        const prediction =
+            document.getElementById(
+                "prediction"
+            );
+
+
+        const confidence =
+            document.getElementById(
+                "confidence"
+            );
+
+
+        const errorBox =
+            document.getElementById(
+                "errorBox"
+            );
+
+
+
+        // =================================
+        // IMAGE SELECTION
+        // =================================
+
+        imageInput.addEventListener(
+            "change",
+            function () {
+
+
+                const file =
+                    this.files[0];
+
+
+                // No file selected
+
+                if (!file) {
+
+                    return;
+
+                }
+
+
+                // Check file type
+
+                if (
+                    !file.type.startsWith(
+                        "image/"
+                    )
+                ) {
+
+                    showError(
+                        "Please select an image file."
+                    );
+
+                    return;
+
+                }
+
+
+                // FileReader
+
+                const reader =
+                    new FileReader();
+
+
+                reader.onload =
+                    function (event) {
+
+
+                        // Show preview
+
+                        preview.src =
+                            event.target.result;
+
+
+                        preview.style.display =
+                            "block";
+
+
+                        // Show Predict button
+
+                        predictButton.style.display =
+                            "block";
+
+
+                        // Hide old result
+
+                        result.style.display =
+                            "none";
+
+
+                        // Hide old error
+
+                        errorBox.style.display =
+                            "none";
+
+                    };
+
+
+                reader.readAsDataURL(file);
+
+            }
+        );
+
+
+
+        // =================================
+        // PREDICT BUTTON
+        // =================================
+
+        predictButton.addEventListener(
+            "click",
+            async function () {
+
+
+                const file =
+                    imageInput.files[0];
+
+
+                // Check file
+
+                if (!file) {
+
+                    showError(
+                        "Please select an image first."
+                    );
+
+                    return;
+
+                }
+
+
+                // Create FormData
+
+                const formData =
+                    new FormData();
+
+
+                formData.append(
+                    "image",
+                    file
+                );
+
+
+                // Show loading
+
+                loading.style.display =
+                    "block";
+
+
+                // Disable button
+
+                predictButton.disabled =
+                    true;
+
+
+                // Hide previous result
+
+                result.style.display =
+                    "none";
+
+
+                // Hide previous error
+
+                errorBox.style.display =
+                    "none";
+
+
+                try {
+
+
+                    console.log(
+                        "================================"
+                    );
+
+
+                    console.log(
+                        "Uploading image..."
+                    );
+
+
+                    // =================================
+                    // Send image to Flask
+                    // =================================
+
+                    const response =
+                        await fetch(
+                            "/predict",
+                            {
+                                method: "POST",
+
+                                body: formData
+                            }
+                        );
+
+
+                    console.log(
+                        "HTTP status:",
+                        response.status
+                    );
+
+
+                    console.log(
+                        "HTTP status text:",
+                        response.statusText
+                    );
+
+
+                    // =================================
+                    // Read response as TEXT first
+                    // =================================
+
+                    const text =
+                        await response.text();
+
+
+                    console.log(
+                        "Raw server response:"
+                    );
+
+
+                    console.log(
+                        text
+                    );
+
+
+                    // Empty response
+
+                    if (!text) {
+
+                        throw new Error(
+                            "The server returned an empty response."
+                        );
+
+                    }
+
+
+                    // =================================
+                    // Convert response to JSON
+                    // =================================
+
+                    let data;
+
+
+                    try {
+
+                        data =
+                            JSON.parse(text);
+
+                    }
+
+                    catch (jsonError) {
+
+                        throw new Error(
+
+                            "The server returned invalid JSON.\n\n"
+                            + text
+
+                        );
+
+                    }
+
+
+                    console.log(
+                        "JSON data:",
+                        data
+                    );
+
+
+                    // =================================
+                    // Check HTTP response
+                    // =================================
+
+                    if (!response.ok) {
+
+                        throw new Error(
+
+                            data.error ||
+
+                            "The server returned an error."
+
+                        );
+
+                    }
+
+
+                    // =================================
+                    // Check success
+                    // =================================
+
+                    if (!data.success) {
+
+                        throw new Error(
+
+                            data.error ||
+
+                            "Prediction failed."
+
+                        );
+
+                    }
+
+
+                    // =================================
+                    // Display prediction
+                    // =================================
+
+                    prediction.textContent =
+
+                        "Prediction: "
+                        + data.prediction;
+
+
+                    // =================================
+                    // Display confidence
+                    // =================================
+
+                    confidence.textContent =
+
+                        "Confidence: "
+                        + data.confidence
+                        + "%";
+
+
+                    // Show result
+
+                    result.style.display =
+                        "block";
+
+
+                    console.log(
+                        "Prediction successful!"
+                    );
+
+
+                }
+
+                catch (error) {
+
+
+                    console.error(
+                        "================================"
+                    );
+
+
+                    console.error(
+                        "PREDICTION ERROR:"
+                    );
+
+
+                    console.error(
+                        error
+                    );
+
+
+                    console.error(
+                        "================================"
+                    );
+
+
+                    showError(
+                        error.message
+                    );
+
+                }
+
+
+                finally {
+
+
+                    // Hide loading
+
+                    loading.style.display =
+                        "none";
+
+
+                    // Enable button
+
+                    predictButton.disabled =
+                        false;
+
+                }
+
+            }
+        );
+
+
+
+        // =================================
+        // SHOW ERROR
+        // =================================
+
+        function showError(
+            message
+        ) {
+
+
+            errorBox.textContent =
+
+                "⚠️ "
+                + message;
+
+
+            errorBox.style.display =
+                "block";
+
+        }
+
+
+    </script>
+
+
+</body>
+
+</html>
