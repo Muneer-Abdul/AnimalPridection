@@ -4,11 +4,29 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import traceback
-import numpy as np
-from PIL import Image
-from flask import Flask, render_template, request, jsonify
+import importlib
 
-import tensorflow as tf
+try:
+    _flask = importlib.import_module("flask")
+    Flask = _flask.Flask
+    render_template = _flask.render_template
+    request = _flask.request
+    jsonify = _flask.jsonify
+except (ImportError, AttributeError) as exc:
+    raise RuntimeError(
+        "Flask is required. Install it with: python -m pip install flask"
+    ) from exc
+
+try:
+    tf = importlib.import_module("tensorflow")
+except ImportError as exc:
+    raise RuntimeError(
+        "TensorFlow is required. Install it with: python -m pip install tensorflow"
+    ) from exc
+
+# Use TensorFlow's NumPy-compatible API so NumPy is not a separate import
+# dependency for this application.
+np = tf.experimental.numpy
 
 
 # =====================================================
@@ -149,28 +167,12 @@ def predict():
         # Open image
         # ---------------------------------------------
 
-        print("Opening image...")
+        print("Opening and resizing image...")
 
-        image = Image.open(file)
-
-        print(
-            "Original:",
-            image.size,
-            image.mode
-        )
-
-
-        image = image.convert("RGB")
-
-
-        # ---------------------------------------------
-        # Resize
-        # ---------------------------------------------
-
-        print("Resizing...")
-
-        image = image.resize(
-            IMAGE_SIZE
+        image = tf.keras.utils.load_img(
+            file,
+            target_size=IMAGE_SIZE,
+            color_mode="rgb"
         )
 
 
