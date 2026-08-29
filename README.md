@@ -37,7 +37,6 @@ The application also provides a confidence percentage for each prediction.
 - 📦 Maximum upload size protection
 - ❤️ Simple and easy-to-use interface
 
----
 
 ## 🧠 How It Works
 
