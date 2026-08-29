@@ -6,7 +6,6 @@ AnimalPrediction is a machine-learning web application that uses a trained **Ten
 
 The project combines a trained image-classification model with a **Flask backend** and a simple, responsive **HTML/CSS/JavaScript frontend**.
 
----
 
 ## 🚀 Project Demo
 
@@ -22,7 +21,6 @@ Upload an image → Let the AI analyze it → Get a prediction and confidence sc
 
 The application also provides a confidence percentage for each prediction.
 
----
 
 ## ✨ Features
 
