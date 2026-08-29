@@ -1,16 +1,21 @@
 # ============================================================
-# Animal Classifier - Flask Application
+# CAT CLASSIFIER - FLASK APPLICATION
 # ============================================================
+#
 # This application:
+#
 # 1. Loads a trained TensorFlow/Keras model
 # 2. Accepts an image from the frontend
 # 3. Preprocesses the image
-# 4. Uses the model to classify the image
-# 5. Returns the prediction and confidence as JSON
+# 4. Sends the image to the AI model
+# 5. Determines whether the image is a cat or another animal
+# 6. Returns the prediction and confidence as JSON
 #
-# Expected classes:
-#   - Animal
-#   - Not Animal
+# Expected predictions:
+#
+#     Cat
+#     Other Animal
+#
 # ============================================================
 
 
@@ -21,7 +26,7 @@
 import os
 
 # Reduce TensorFlow informational messages.
-# This MUST be set before importing TensorFlow.
+# This must be set BEFORE importing TensorFlow.
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import traceback
@@ -38,17 +43,24 @@ import tensorflow as tf
 # ============================================================
 # TENSORFLOW RESOURCE LIMITS
 # ============================================================
-# These settings reduce the number of CPU threads TensorFlow
-# uses. This can help prevent excessive CPU usage, especially
-# on smaller computers or free cloud hosting platforms.
+#
+# Limit TensorFlow to one CPU thread.
+#
+# This can help reduce CPU usage, especially when running the
+# application on a laptop or a small cloud server.
+#
 # ============================================================
 
 try:
+
     tf.config.threading.set_intra_op_parallelism_threads(1)
+
     tf.config.threading.set_inter_op_parallelism_threads(1)
+
 except Exception:
+
     # If TensorFlow threading has already been configured,
-    # continue without stopping the application.
+    # continue running the application.
     pass
 
 
@@ -63,42 +75,52 @@ app = Flask(__name__)
 # SETTINGS
 # ============================================================
 
-# Get the directory where this app.py file is located.
+# Get the folder where app.py is located.
+#
 # This makes the model path more reliable.
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
 
-# Path to the trained Keras model.
+
+# Path to the trained AI model.
 MODEL_PATH = os.path.join(
     BASE_DIR,
     "animal_classifier.keras"
 )
 
+
 # Image size expected by the model.
 IMAGE_SIZE = (224, 224)
 
-# Maximum upload size: 10 MB.
+
+# Maximum image upload size.
+#
+# 10 MB should be more than enough for normal image uploads.
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 
 
 # ============================================================
 # CLASS NAMES
 # ============================================================
+#
+# These names are used when the model has two outputs.
+#
 # IMPORTANT:
 #
-# These class names MUST match the order used when the model
-# was trained.
+# This assumes the model was trained with:
 #
-# For a two-output model:
+#     index 0 = Cat
+#     index 1 = Other Animal
 #
-#   index 0 = Animal
-#   index 1 = Not Animal
+# If your model was trained with the opposite order,
+# these labels must be reversed.
 #
-# If your training code used the opposite order, change these.
 # ============================================================
 
 CLASSES = [
-    "Animal",
-    "Not Animal"
+    "Cat",
+    "Other Animal"
 ]
 
 
@@ -107,10 +129,13 @@ CLASSES = [
 # ============================================================
 
 print("======================================")
-print("ANIMAL CLASSIFIER STARTING")
+print("CAT CLASSIFIER STARTING")
 print("======================================")
 
+
+# Start with no model.
 model = None
+
 
 try:
 
@@ -120,26 +145,38 @@ try:
 
     if not os.path.exists(MODEL_PATH):
 
+        print("")
         print("MODEL FILE NOT FOUND!")
-        print("Expected location:")
+        print("")
+        print("Expected model location:")
         print(MODEL_PATH)
 
     else:
 
+        print("")
         print("Loading model...")
+        print("")
+
         print("Model path:")
         print(MODEL_PATH)
 
+        # ----------------------------------------------------
         # Load the trained Keras model.
-        # compile=False is used because we only need the model
-        # for prediction.
+        #
+        # compile=False is used because this application
+        # only needs the model for prediction.
+        # ----------------------------------------------------
+
         model = tf.keras.models.load_model(
             MODEL_PATH,
             compile=False
         )
 
+        print("")
         print("MODEL LOADED SUCCESSFULLY!")
+        print("")
 
+        # Display model input/output information.
         print(
             "INPUT SHAPE:",
             model.input_shape
@@ -150,13 +187,21 @@ try:
             model.output_shape
         )
 
+        print("")
+
+
 except Exception as e:
 
+    print("")
     print("======================================")
     print("MODEL LOAD ERROR")
     print("======================================")
 
-    print(str(e))
+    print(
+        str(e)
+    )
+
+    print("")
 
     traceback.print_exc()
 
@@ -166,58 +211,79 @@ except Exception as e:
 # ============================================================
 # HOME ROUTE
 # ============================================================
+#
 # When the user visits:
 #
-# http://localhost:5000/
+#     http://127.0.0.1:5000/
 #
-# Flask displays index.html from the templates folder.
+# Flask loads:
+#
+#     templates/index.html
+#
 # ============================================================
 
 @app.route("/")
 def home():
 
-    return render_template("index.html")
+    return render_template(
+        "index.html"
+    )
 
 
 # ============================================================
 # HEALTH CHECK ROUTE
 # ============================================================
-# This route can be used to check whether the Flask server
-# and TensorFlow model are working.
+#
+# This allows you to check whether:
+#
+# 1. Flask is running
+# 2. The AI model loaded successfully
 #
 # Visit:
-# http://localhost:5000/health
+#
+#     http://127.0.0.1:5000/health
+#
 # ============================================================
 
 @app.route("/health")
 def health():
 
     return jsonify({
+
         "status": "ok",
+
         "model_loaded": model is not None
+
     })
 
 
 # ============================================================
 # IMAGE PREPROCESSING FUNCTION
 # ============================================================
-# This function:
 #
-# 1. Opens the uploaded image
-# 2. Converts it to RGB
-# 3. Resizes it to 224 x 224
-# 4. Converts it to NumPy
-# 5. Converts pixel values from 0-255 to 0-1
-# 6. Adds the batch dimension
+# This function prepares the uploaded image for TensorFlow.
 #
-# Final shape:
+# Steps:
 #
-# (1, 224, 224, 3)
+# 1. Open image
+# 2. Convert image to RGB
+# 3. Resize to 224 x 224
+# 4. Convert to NumPy array
+# 5. Normalize pixel values
+# 6. Add batch dimension
+#
+# Final input:
+#
+#     (1, 224, 224, 3)
+#
 # ============================================================
 
 def preprocess_image(file):
 
-    # Open the uploaded image.
+    # --------------------------------------------------------
+    # Open uploaded image
+    # --------------------------------------------------------
+
     image = Image.open(file)
 
     print(
@@ -226,12 +292,26 @@ def preprocess_image(file):
         image.mode
     )
 
-    # Convert the image to RGB.
-    # This ensures that grayscale/RGBA images are converted
-    # into the 3-channel format expected by most CNN models.
+
+    # --------------------------------------------------------
+    # Convert image to RGB
+    # --------------------------------------------------------
+    #
+    # This ensures the image has exactly 3 channels:
+    #
+    #     Red
+    #     Green
+    #     Blue
+    #
+    # --------------------------------------------------------
+
     image = image.convert("RGB")
 
-    # Resize image to the model's expected size.
+
+    # --------------------------------------------------------
+    # Resize image
+    # --------------------------------------------------------
+
     image = image.resize(
         IMAGE_SIZE
     )
@@ -241,7 +321,11 @@ def preprocess_image(file):
         image.size
     )
 
-    # Convert PIL image to NumPy array.
+
+    # --------------------------------------------------------
+    # Convert PIL image to NumPy array
+    # --------------------------------------------------------
+
     data = np.asarray(
         image,
         dtype=np.float32
@@ -252,34 +336,54 @@ def preprocess_image(file):
         data.shape
     )
 
-    # Normalize pixel values.
+
+    # --------------------------------------------------------
+    # Normalize pixel values
+    # --------------------------------------------------------
     #
-    # Original:
-    # 0 - 255
+    # Original pixel values:
+    #
+    #     0 - 255
     #
     # After normalization:
-    # 0 - 1
+    #
+    #     0 - 1
     #
     # IMPORTANT:
-    # This must match the preprocessing used during training.
+    #
+    # This must match the preprocessing used when the
+    # model was trained.
+    #
+    # --------------------------------------------------------
+
     data = data / 255.0
 
-    # Add batch dimension.
+
+    # --------------------------------------------------------
+    # Add batch dimension
+    # --------------------------------------------------------
     #
     # Before:
-    # (224, 224, 3)
+    #
+    #     (224, 224, 3)
     #
     # After:
-    # (1, 224, 224, 3)
+    #
+    #     (1, 224, 224, 3)
+    #
+    # --------------------------------------------------------
+
     data = np.expand_dims(
         data,
         axis=0
     )
 
+
     print(
         "Final model input shape:",
         data.shape
     )
+
 
     return data
 
@@ -287,26 +391,29 @@ def preprocess_image(file):
 # ============================================================
 # PREDICTION ROUTE
 # ============================================================
-# The frontend should send:
 #
-# POST /predict
+# The frontend sends an image using:
 #
-# with a multipart/form-data field named:
+#     POST /predict
 #
-# image
+# The field name must be:
 #
-# Example JavaScript:
+#     image
 #
-# formData.append("image", file);
 # ============================================================
 
-@app.route("/predict", methods=["POST"])
+@app.route(
+    "/predict",
+    methods=["POST"]
+)
 def predict():
 
     print("")
     print("######################################")
     print("PREDICT REQUEST")
     print("######################################")
+    print("")
+
 
     try:
 
@@ -316,16 +423,21 @@ def predict():
 
         if model is None:
 
-            print("MODEL IS NOT LOADED")
+            print(
+                "MODEL IS NOT LOADED"
+            )
 
             return jsonify({
+
                 "success": False,
+
                 "error": "Model is not loaded"
+
             }), 500
 
 
         # ====================================================
-        # 2. CHECK FILE
+        # 2. CHECK FOR IMAGE
         # ====================================================
 
         print(
@@ -333,29 +445,43 @@ def predict():
             list(request.files.keys())
         )
 
+
         # Check whether the frontend sent an "image" field.
         if "image" not in request.files:
 
-            print("NO IMAGE FIELD RECEIVED")
+            print(
+                "NO IMAGE FIELD RECEIVED"
+            )
 
             return jsonify({
+
                 "success": False,
+
                 "error": "No image field received"
+
             }), 400
 
 
-        # Get the uploaded file.
+        # Get uploaded file.
         file = request.files["image"]
 
 
-        # Check whether a file was actually selected.
+        # ====================================================
+        # 3. CHECK FILE NAME
+        # ====================================================
+
         if file.filename == "":
 
-            print("NO FILE SELECTED")
+            print(
+                "NO FILE SELECTED"
+            )
 
             return jsonify({
+
                 "success": False,
+
                 "error": "No file selected"
+
             }), 400
 
 
@@ -366,39 +492,51 @@ def predict():
 
 
         # ====================================================
-        # 3. OPEN AND PREPROCESS IMAGE
+        # 4. PREPROCESS IMAGE
         # ====================================================
 
-        print("Opening image...")
+        print("")
+        print("Opening and preprocessing image...")
+        print("")
+
 
         try:
 
-            data = preprocess_image(file)
+            data = preprocess_image(
+                file
+            )
+
 
         except UnidentifiedImageError:
 
-            print("INVALID IMAGE")
+            print(
+                "INVALID IMAGE"
+            )
 
             return jsonify({
+
                 "success": False,
+
                 "error": "The uploaded file is not a valid image"
+
             }), 400
 
 
         # ====================================================
-        # 4. RUN MODEL
+        # 5. RUN AI MODEL
         # ====================================================
 
         print("")
         print("**************************************")
-        print("CALLING MODEL")
+        print("CALLING AI MODEL")
         print("**************************************")
+        print("")
 
 
-        # Run the model directly.
+        # Run the model.
         #
-        # training=False tells TensorFlow that this is
-        # prediction/inference rather than training.
+        # training=False means we are performing inference,
+        # not training.
         prediction = model(
             data,
             training=False
@@ -409,9 +547,11 @@ def predict():
         prediction = prediction.numpy()
 
 
+        print("")
         print("**************************************")
         print("MODEL FINISHED")
         print("**************************************")
+        print("")
 
 
         print(
@@ -421,12 +561,13 @@ def predict():
 
 
         # ====================================================
-        # 5. CONVERT PREDICTION TO NUMPY
+        # 6. CONVERT PREDICTION
         # ====================================================
 
         prediction = np.asarray(
             prediction
         )
+
 
         print(
             "Prediction shape:",
@@ -438,48 +579,67 @@ def predict():
         #
         # Example:
         #
-        # [[0.91]]
+        #     [[0.91]]
         #
         # becomes:
         #
-        # [0.91]
+        #     [0.91]
         #
         # Or:
         #
-        # [[0.10, 0.90]]
+        #     [[0.10, 0.90]]
         #
         # becomes:
         #
-        # [0.10, 0.90]
+        #     [0.10, 0.90]
+        #
+
         prediction = prediction.flatten()
 
 
-        # Make sure the model returned something.
+        # ====================================================
+        # 7. CHECK MODEL OUTPUT
+        # ====================================================
+
         if prediction.size == 0:
 
+            print(
+                "MODEL RETURNED EMPTY PREDICTION"
+            )
+
             return jsonify({
+
                 "success": False,
+
                 "error": "Model returned an empty prediction"
+
             }), 500
 
 
         # ====================================================
-        # 6. INTERPRET MODEL OUTPUT
+        # 8. INTERPRET PREDICTION
         # ====================================================
         #
-        # We support:
+        # There are two possible model formats:
         #
-        # A. Binary model:
-        #    [0.85]
+        # FORMAT 1:
         #
-        # B. Two-class model:
-        #    [0.15, 0.85]
+        #     Binary output
+        #
+        #     [0.85]
+        #
+        # FORMAT 2:
+        #
+        #     Two-class output
+        #
+        #     [0.15, 0.85]
+        #
         # ====================================================
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # BINARY CLASSIFIER
-        # ----------------------------------------------------
+        # ====================================================
 
         if prediction.size == 1:
 
@@ -487,16 +647,17 @@ def predict():
                 prediction[0]
             )
 
+
             print(
                 "Binary probability:",
                 probability
             )
 
 
-            # Make sure probability is within 0-1.
-            #
-            # This prevents invalid confidence values if the
-            # model returns something unexpected.
+            # ------------------------------------------------
+            # Make sure the probability is between 0 and 1.
+            # ------------------------------------------------
+
             probability = float(
                 np.clip(
                     probability,
@@ -506,21 +667,23 @@ def predict():
             )
 
 
-            # IMPORTANT:
+            # ------------------------------------------------
+            # CAT / OTHER ANIMAL
+            # ------------------------------------------------
             #
-            # This assumes:
+            # This assumes the model was trained so that:
             #
-            # probability >= 0.5
-            #       = Animal
+            #     probability >= 0.5
+            #             = Cat
             #
-            # probability < 0.5
-            #       = Not Animal
+            #     probability < 0.5
+            #             = Other Animal
             #
-            # This MUST match your training labels.
+            # ------------------------------------------------
 
             if probability >= 0.5:
 
-                label = "Animal"
+                label = "Cat"
 
                 confidence = (
                     probability * 100
@@ -528,36 +691,53 @@ def predict():
 
             else:
 
-                label = "Not Animal"
+                label = "Other Animal"
 
                 confidence = (
-                    (1.0 - probability)
-                    * 100
+                    (1.0 - probability) * 100
                 )
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # TWO-CLASS CLASSIFIER
-        # ----------------------------------------------------
+        # ====================================================
 
         else:
 
-            # Make sure there are at least two classes.
+            # ------------------------------------------------
+            # Make sure at least two outputs exist.
+            # ------------------------------------------------
+
             if prediction.size < 2:
 
                 return jsonify({
+
                     "success": False,
+
                     "error": "Invalid model output"
+
                 }), 500
 
 
+            # ------------------------------------------------
             # Find the class with the highest probability.
+            # ------------------------------------------------
+
             index = int(
                 np.argmax(prediction)
             )
 
 
-            # Check that the class index exists.
+            print(
+                "Predicted class index:",
+                index
+            )
+
+
+            # ------------------------------------------------
+            # Make sure the index exists in CLASSES.
+            # ------------------------------------------------
+
             if index >= len(CLASSES):
 
                 label = "Unknown"
@@ -566,15 +746,21 @@ def predict():
 
             else:
 
+                # Get class name.
                 label = CLASSES[index]
 
-                # Get the probability of the selected class.
+
+                # Get probability.
                 confidence = float(
                     prediction[index]
                 )
 
-                # Convert to percentage.
-                confidence = confidence * 100
+
+                # Convert probability to percentage.
+                confidence = (
+                    confidence * 100
+                )
+
 
                 # Keep confidence between 0 and 100.
                 confidence = float(
@@ -587,7 +773,7 @@ def predict():
 
 
         # ====================================================
-        # 7. PRINT RESULT
+        # 9. PRINT FINAL RESULT
         # ====================================================
 
         print("")
@@ -596,7 +782,7 @@ def predict():
         print("======================================")
 
         print(
-            "Label:",
+            "Prediction:",
             label
         )
 
@@ -609,9 +795,12 @@ def predict():
             "%"
         )
 
+        print("======================================")
+        print("")
+
 
         # ====================================================
-        # 8. RETURN JSON RESPONSE
+        # 10. CREATE JSON RESPONSE
         # ====================================================
 
         response = {
@@ -634,19 +823,22 @@ def predict():
         )
 
 
+        # Send result back to frontend.
         return jsonify(
             response
         )
 
 
     # ========================================================
-    # HANDLE INVALID IMAGE
+    # INVALID IMAGE ERROR
     # ========================================================
 
     except UnidentifiedImageError:
 
         print("")
         print("INVALID IMAGE ERROR")
+        print("")
+
 
         return jsonify({
 
@@ -658,7 +850,7 @@ def predict():
 
 
     # ========================================================
-    # HANDLE OTHER ERRORS
+    # GENERAL ERROR
     # ========================================================
 
     except Exception as e:
@@ -671,6 +863,8 @@ def predict():
         print(
             repr(e)
         )
+
+        print("")
 
         traceback.print_exc()
 
@@ -685,10 +879,12 @@ def predict():
 
 
 # ============================================================
-# HANDLE LARGE FILE UPLOADS
+# LARGE FILE ERROR HANDLER
 # ============================================================
-# This prevents the application from crashing when someone
-# uploads a file larger than MAX_CONTENT_LENGTH.
+#
+# If a user uploads an image larger than 10 MB, Flask returns
+# this message instead of producing a generic error.
+#
 # ============================================================
 
 @app.errorhandler(413)
@@ -709,9 +905,12 @@ def request_entity_too_large(error):
 
 if __name__ == "__main__":
 
-    # Use the PORT environment variable if it exists.
+    # --------------------------------------------------------
+    # Get port from environment.
     #
-    # Otherwise, use port 5000.
+    # If PORT is not available, use 5000.
+    # --------------------------------------------------------
+
     port = int(
         os.environ.get(
             "PORT",
@@ -719,6 +918,10 @@ if __name__ == "__main__":
         )
     )
 
+
+    # --------------------------------------------------------
+    # Display startup information.
+    # --------------------------------------------------------
 
     print("")
     print("======================================")
@@ -735,11 +938,18 @@ if __name__ == "__main__":
         MODEL_PATH
     )
 
+    print("")
 
-    # Start Flask.
+
+    # --------------------------------------------------------
+    # Start Flask server.
     #
-    # host="0.0.0.0" allows the application to be accessed
-    # from other devices or cloud hosting environments.
+    # host="0.0.0.0" allows the application to accept
+    # connections from other devices and cloud services.
+    #
+    # debug=False is safer for normal use.
+    # --------------------------------------------------------
+
     app.run(
         host="0.0.0.0",
         port=port,
